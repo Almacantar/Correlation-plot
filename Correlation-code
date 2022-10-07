@@ -1,0 +1,104 @@
+#libraries to load
+library(BBmisc)
+library(circlize)
+library(corrplot)
+library(data.table)
+library(dynutils)
+library(dplyr)
+library(EnhancedVolcano)
+library(foreign)
+library(ggbeeswarm)
+library(ggcorrplot)
+library(ggfortify)
+library(ggplot2)
+library(ggpubr)
+library(ggrepel)
+library(ggsignif)
+library(gplots)
+library(gtsummary)
+library(hablar)
+library(Hmisc)
+library(lubridate)
+library(pheatmap)
+library(polyPK)
+library(RColorBrewer)
+library(readr)
+library(reshape2)
+library(rstatix)
+library(Rtsne)
+library(scales)
+library(tidyverse)
+library(viridis)
+library(wesanderson)
+
+#set directory
+setwd("C:/Users/delbarri/Google Drive/Senior tech/COVID-19 project/Data analysis/R serum")
+
+serum <-read_csv("110520_Irene.csv")
+
+# Step1: filter out undesired samples and create new column
+
+serum_filter  <- serum %>%
+  dplyr::filter(Disease%in%c("Covid-19"))%>%
+  dplyr::filter(Retrovirus%in%c("0"))%>%
+  dplyr::filter(is.na(`Admission_sample_N[0]_or_Y[1]`)|`Admission_sample_N[0]_or_Y[1]`%in%c("1"))%>%
+  mutate(group_IP10 = case_when(`AV_IP10`>=473 ~ "High",`AV_IP10`<473 ~ "Low"))       
+
+#Step2: select the parameters Abhi wants = the objective measurements vs clinicians assessment
+
+colnames(serum_filter)
+
+# only av cytokines no Th
+
+serum_select <- serum_filter[c(1,5,21,87, 9,10,33,39:44, 50:54,57,60:62,64,70:72)]
+
+#correlation only with freq values
+Discovery  <- serum_select %>% 
+  dplyr::filter(Discovery_Validation%in%c("Discovery"))
+
+Validation  <- serum_select %>% 
+  dplyr::filter(Discovery_Validation%in%c("Validation"))
+
+colnames(serum_select)
+
+Serum_num<-serum_select[c(5:36)]
+Discovery_num<-Discovery[c(5:36)]
+Validation_num<-Validation[c(5:36)]
+
+# Compute a correlation matrix
+# tell it to ignore the sample if it has NAs
+corr_all <- round(cor(Serum_num,use="pairwise.complete.obs"), 1)
+corr_discovery <- round(cor(Discovery_num,use="pairwise.complete.obs"), 1)
+corr_validation <- round(cor(Validation_num,use="pairwise.complete.obs"), 1)
+
+
+# Compute a matrix of correlation p-values
+p.mat_all <- cor_pmat(Serum_num)
+p.mat_discovery <- cor_pmat(Discovery_num)
+p.mat_validation <- cor_pmat(Validation_num)
+
+# Visualize the correlation matrix
+ggcorrplot(corr_all,
+           ggtheme = ggplot2::theme_gray,
+           outline.color = "white",
+           colors = c("#6D9EC1", "white", "#E46726"))
+
+ggsave("Correlation all.pdf", width = 13,
+       height = 13,)
+
+ggcorrplot(corr_discovery,
+           ggtheme = ggplot2::theme_gray,
+           outline.color = "white",
+           colors = c("#6D9EC1", "white", "#E46726"))
+
+ggsave("Correlation discovery.pdf", width = 13,
+       height = 13,)
+
+ggcorrplot(corr_validation,
+           ggtheme = ggplot2::theme_gray,
+           outline.color = "white",
+           colors = c("#6D9EC1", "white", "#E46726"))
+
+ggsave("Correlation validation.pdf", width = 13,
+       height = 13,)
+dev.off()
